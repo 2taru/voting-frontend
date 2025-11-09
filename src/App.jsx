@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { MainLayout } from "@/components/main-layout";
 import { LoginPage } from "@/pages/LoginPage";
 import { RegisterPage } from "@/pages/RegisterPage";
+import { ElectionsPage } from "@/pages/ElectionsPage";
 import { Toaster } from "@/components/ui/sonner";
 
 function ProtectedRoute({ children }) {
@@ -19,16 +21,20 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Захищені маршрути */}
           <Route
-            path="/"
             element={
               <ProtectedRoute>
-                {/* Тут буде ваша головна сторінка, наприклад ElectionsPage */}
-                <div>Головна сторінка (список виборів буде тут)</div>
+                <MainLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route path="/" element={<Navigate to="/elections" replace />} />
+            <Route path="/elections" element={<ElectionsPage />} />
+            {/* <Route path="/elections/:id" element={<ElectionDetailsPage />} /> */}
+          </Route>
+
+          {/* Маршрут для 404 */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
       <Toaster />
