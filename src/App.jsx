@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 import { ElectionsPage } from "@/pages/ElectionsPage";
 import { ElectionDetailsPage } from "@/pages/ElectionDetailsPage";
+import { MyVotesPage } from "@/pages/MyVotesPage";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("auth_token");
@@ -33,6 +34,8 @@ function App() {
             <Route path="/" element={<Navigate to="/elections" replace />} />
             <Route path="/elections" element={<ElectionsPage />} />
             <Route path="/elections/:id" element={<ElectionDetailsPage />} />
+
+            <Route path="/my-votes" element={<MyVotesPage />} />
           </Route>
 
           {/* Маршрут для 404 */}
