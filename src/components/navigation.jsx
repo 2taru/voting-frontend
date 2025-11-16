@@ -3,25 +3,23 @@ import UserMenu from "@/components/navbar-components/user-menu";
 import { Button } from "@/components/ui/button";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from "@/components/ui/navigation-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ConnectWalletButton } from "./ConnectWalletButton";
+import { toast } from "sonner";
 
 export function Navigation() {
   const navigate = useNavigate();
 
-  const userRole = localStorage.getItem("user_role");
+  const user = JSON.parse(localStorage.getItem("user_data"));
 
   const getNavigationLinks = () => {
     const commonLinks = [{ href: "/", label: "Головна" }];
 
-    if (userRole === "admin") {
-      return [
-        ...commonLinks,
-        { href: "/elections/create", label: "Створити вибори" },
-      ];
+    if (user.role === "voter") {
+      return [...commonLinks, { href: "/my-votes", label: "Мої голоси" }];
+    } else if (user.role === "admin") {
+      return [...commonLinks, { href: "/admin/stats", label: "Статистика" }];
     } else {
-      return [
-        ...commonLinks,
-        { href: "/my-votes", label: "Мої голоси" },
-      ];
+      return commonLinks;
     }
   };
 
@@ -102,6 +100,7 @@ export function Navigation() {
         </div>
         {/* Right side */}
         <div className="flex items-center gap-4">
+          {user.role === "voter" && <ConnectWalletButton className=" align-self-end" onConnected={() => toast.success("Успішно підключено!")} />}
           {/* User menu */}
           <UserMenu handleLogout={handleLogout} />
         </div>

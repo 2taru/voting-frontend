@@ -1,13 +1,25 @@
-import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { makeRequest } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Loader2, Pencil } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { EditElectionDialog } from "@/components/admin/EditElectionDialog";
+import { AddCandidateDialog } from "@/components/admin/AddCandidateDialog";
 
 export function ElectionDetailsPage() {
   const { id } = useParams(); // Отримуємо ID з URL
@@ -17,34 +29,60 @@ export function ElectionDetailsPage() {
   const [election, setElection] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const fetchElectionData = () => {
-    makeRequest("GET", `/elections/${id}`, {}, (res) => {
-      if (res.id) setElection(res);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isAddCandidateOpen, setIsAddCandidateOpen] = useState(false);
+
+  const [candidateToDelete, setCandidateToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const fetchElectionData = useCallback(() => {
+    return new Promise((resolve) => {
+      makeRequest("GET", `/elections/${id}`, {}, (res) => {
+        if (res.id) setElection(res);
+        else {
+          toast.error("Вибори не знайдено");
+          navigate("/elections");
+        }
+        resolve();
+      });
+    });
+  }, [id, navigate]); // 2. Додаємо залежності
+
+  // Функція завантаження кандидатів
+  const fetchCandidates = useCallback(() => {
+    return new Promise((resolve) => {
+      makeRequest("GET", `/elections/${id}/candidates`, {}, (res) => {
+        if (Array.isArray(res)) setCandidates(res);
+        resolve();
+      });
+    });
+  }, [id]);
+
+  const handleDeleteCandidate = async () => {
+    if (!candidateToDelete) return;
+
+    setDeleteLoading(true);
+    await makeRequest("DELETE", `/candidates/${candidateToDelete}`, {}, (res) => {
+      setDeleteLoading(false);
+      if (res.message === "Candidate removed successfully") {
+        // Перевіряємо повідомлення з бекенду
+        toast.success("Кандидата видалено");
+        fetchCandidates(); // Оновлюємо список
+      } else {
+        toast.error("Не вдалося видалити кандидата", { description: res.message });
+      }
+      setCandidateToDelete(null); // Закриваємо діалог
     });
   };
 
   useEffect(() => {
     setLoading(true);
-
     const userData = localStorage.getItem("user_data");
     if (userData) setUser(JSON.parse(userData));
-    Promise.all([
-      new Promise((resolve) =>
-        makeRequest("GET", `/elections/${id}`, {}, (res) => {
-          if (res.id) setElection(res);
-          resolve();
-        })
-      ),
-      new Promise((resolve) =>
-        makeRequest("GET", `/elections/${id}/candidates`, {}, (res) => {
-          if (Array.isArray(res)) setCandidates(res);
-          resolve();
-        })
-      ),
-    ]).then(() => setLoading(false));
-  }, [id, navigate]);
+    // Завантажуємо все паралельно
+    Promise.all([fetchElectionData(), fetchCandidates()]).finally(() => setLoading(false));
+  }, [fetchCandidates, fetchElectionData, id, navigate]);
 
   if (loading) {
     return (
@@ -53,6 +91,8 @@ export function ElectionDetailsPage() {
       </div>
     );
   }
+
+  if (!election) return null;
 
   return (
     <div className="container mx-auto p-6 max-w-5xl">
@@ -64,7 +104,16 @@ export function ElectionDetailsPage() {
       <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
         {/* Ліва колонка: Список кандидатів */}
         <div className="space-y-6">
-          <h2 className="text-2xl font-bold">Кандидати</h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Кандидати</h2>
+
+            {/* КНОПКА ДОДАВАННЯ КАНДИДАТА (Тільки для Адміна) */}
+            {user?.role === "admin" && (
+              <Button size="sm" variant="outline" onClick={() => setIsAddCandidateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" /> Додати кандидата
+              </Button>
+            )}
+          </div>
           {candidates.length > 0 ? (
             <div className="grid gap-4">
               {candidates.map((candidate) => (
@@ -77,7 +126,24 @@ export function ElectionDetailsPage() {
                     <h3 className="font-bold text-lg">{candidate.user.name}</h3>
                     <p className="text-sm text-muted-foreground line-clamp-2">{candidate.bio || "Немає опису"}</p>
                   </div>
-                  <Button variant="outline">Голосувати</Button>
+                  <div className="flex gap-2">
+                    {/* Кнопка видалення (Тільки для Адміна) */}
+                    {user?.role === "admin" && (
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Щоб не спрацьовував клік по картці, якщо він є
+                          setCandidateToDelete(candidate.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+
+                    {/* Кнопка голосування (поки заглушка) */}
+                    <Button variant="outline">Голосувати</Button>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -127,6 +193,34 @@ export function ElectionDetailsPage() {
         election={election}
         onSuccess={fetchElectionData} // Оновлюємо дані після збереження
       />
+      <AddCandidateDialog
+        open={isAddCandidateOpen}
+        onOpenChange={setIsAddCandidateOpen}
+        electionId={id}
+        onSuccess={fetchCandidates} // Передаємо функцію оновлення списку
+      />
+      <AlertDialog open={!!candidateToDelete} onOpenChange={(open) => !open && setCandidateToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ви впевнені?</AlertDialogTitle>
+            <AlertDialogDescription>Ця дія незворотна. Кандидата буде видалено зі списку цього голосування.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading}>Скасувати</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteCandidate();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteLoading}
+            >
+              {deleteLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Видалити
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
