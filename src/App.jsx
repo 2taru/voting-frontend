@@ -2,8 +2,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { MainLayout } from "@/components/main-layout";
 import { LoginPage } from "@/pages/LoginPage";
 import { RegisterPage } from "@/pages/RegisterPage";
-import { ElectionsPage } from "@/pages/ElectionsPage";
 import { Toaster } from "@/components/ui/sonner";
+
+import { ElectionsPage } from "@/pages/ElectionsPage";
+import { ElectionDetailsPage } from "@/pages/ElectionDetailsPage";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("auth_token");
@@ -30,7 +32,7 @@ function App() {
           >
             <Route path="/" element={<Navigate to="/elections" replace />} />
             <Route path="/elections" element={<ElectionsPage />} />
-            {/* <Route path="/elections/:id" element={<ElectionDetailsPage />} /> */}
+            <Route path="/elections/:id" element={<ElectionDetailsPage />} />
           </Route>
 
           {/* Маршрут для 404 */}

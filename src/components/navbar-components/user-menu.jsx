@@ -60,7 +60,7 @@ export default function UserMenu({ handleLogout }) {
         <DropdownMenuSeparator /> */}
         <DropdownMenuItem onClick={handleLogout}>
           <LogOutIcon size={16} className="opacity-60" aria-hidden="true" />
-          <span>Logout</span>
+          <span>Вихід</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -39,6 +39,7 @@ export function RegisterPage({ className, ...props }) {
         setLoading(false);
         if (res.access_token) {
           localStorage.setItem("auth_token", res.access_token);
+          localStorage.setItem("user_data", JSON.stringify(res.user));
           toast.success("Вітаємо в системі!", { position: "top-center" });
           navigate("/");
         } else {
