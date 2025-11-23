@@ -102,7 +102,7 @@ export function Navigation() {
         <div className="flex items-center gap-4">
           {user.role === "voter" && <ConnectWalletButton className=" align-self-end" onConnected={() => toast.success("Успішно підключено!")} />}
           {/* User menu */}
-          <UserMenu handleLogout={handleLogout} />
+          <UserMenu user={user} handleLogout={handleLogout} />
         </div>
       </div>
     </header>

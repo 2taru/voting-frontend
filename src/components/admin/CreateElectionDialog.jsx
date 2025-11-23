@@ -7,8 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useVotingContract } from "@/hooks/use-voting-contract";
 
 export function CreateElectionDialog({ open, onOpenChange, onSuccess }) {
+  const { createElectionOnChain, loading: chainLoading } = useVotingContract();
+
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -26,9 +29,28 @@ export function CreateElectionDialog({ open, onOpenChange, onSuccess }) {
     e.preventDefault();
     setLoading(true);
 
-    await makeRequest("POST", "/elections", formData, (res) => {
+    await makeRequest("POST", "/elections", formData, async (res) => {
       setLoading(false);
-      if (res.id) {
+      if (res.election.id) {
+        const electionId = res.election.id;
+
+        // 2. Створюємо в Блокчейні (Solidity)
+        // Увага: Для цього MetaMask адміна має бути Account #0 (Deployer)
+        const success = await createElectionOnChain(electionId);
+
+        if (success) {
+          // 3. Якщо все ок - завершуємо
+          toast.success("Вибори створено і синхронізовано!");
+          onSuccess();
+          onOpenChange(false);
+          setFormData({ title: "", description: "", start_date: "", end_date: "" });
+        } else {
+          // Якщо блокчейн відпав, можна видалити запис з БД або попередити адміна
+          toast.warning("Запис створено в БД, але не в Блокчейні. Спробуйте пізніше.");
+          // Все одно закриваємо, щоб не блокувати роботу
+          onSuccess();
+          onOpenChange(false);
+        }
         toast.success("Вибори успішно створено!");
         onSuccess(); // Оновлюємо список батьківському компоненті
         onOpenChange(false); // Закриваємо модалку
@@ -66,7 +88,7 @@ export function CreateElectionDialog({ open, onOpenChange, onSuccess }) {
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || chainLoading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Створити
             </Button>

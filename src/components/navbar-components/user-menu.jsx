@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User2 } from "lucide-react";
 
-export default function UserMenu({ handleLogout }) {
+export default function UserMenu({ user, handleLogout }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -27,12 +27,12 @@ export default function UserMenu({ handleLogout }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-w-64" align="end">
-        {/* <DropdownMenuLabel className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-medium text-foreground">Keith Kennedy</span>
-          <span className="truncate text-xs font-normal text-muted-foreground">k.kennedy@coss.com</span>
+        <DropdownMenuLabel className="flex min-w-0 flex-col">
+          <span className="truncate text-sm font-medium text-foreground">{user.name}</span>
+          <span className="truncate text-xs font-normal text-muted-foreground">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>
+        {/* <DropdownMenuGroup>
           <DropdownMenuItem>
             <BoltIcon size={16} className="opacity-60" aria-hidden="true" />
             <span>Option 1</span>

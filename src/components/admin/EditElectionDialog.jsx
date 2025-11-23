@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useVotingContract } from "@/hooks/use-voting-contract";
 
 // Допоміжна функція для форматування дати під input datetime-local
 const formatDateForInput = (dateString) => {
@@ -19,6 +20,7 @@ const formatDateForInput = (dateString) => {
 };
 
 export function EditElectionDialog({ open, onOpenChange, onSuccess, election }) {
+  const { toggleElectionStatusOnChain, loading: chainLoading } = useVotingContract();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -54,9 +56,19 @@ export function EditElectionDialog({ open, onOpenChange, onSuccess, election }) 
     e.preventDefault();
     setLoading(true);
 
-    makeRequest("PUT", `/elections/${election.id}`, formData, (res) => {
+    makeRequest("PUT", `/elections/${election.id}`, formData, async (res) => {
       setLoading(false);
       if (res.election) {
+        if (formData.status !== election.status) {
+          const shouldBeActive = formData.status === "active";
+
+          // Викликаємо смарт-контракт
+          const success = await toggleElectionStatusOnChain(election.id, shouldBeActive);
+
+          if (!success) {
+            toast.warning("Статус в БД оновлено, але транзакція в блокчейні не пройшла.");
+          }
+        }
         toast.success("Дані оновлено!");
         onSuccess(); // Оновлюємо дані на сторінці
         onOpenChange(false);
@@ -111,7 +123,7 @@ export function EditElectionDialog({ open, onOpenChange, onSuccess, election }) 
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || chainLoading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Зберегти зміни
             </Button>

@@ -16,12 +16,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useVotingContract } from "@/hooks/use-voting-contract";
 import { ArrowLeft, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { EditElectionDialog } from "@/components/admin/EditElectionDialog";
 import { AddCandidateDialog } from "@/components/admin/AddCandidateDialog";
 
 export function ElectionDetailsPage() {
+  const { getVotes, voteOnChain, loading: voteLoading } = useVotingContract();
   const { id } = useParams(); // Отримуємо ID з URL
   const navigate = useNavigate();
 
@@ -52,12 +54,21 @@ export function ElectionDetailsPage() {
   // Функція завантаження кандидатів
   const fetchCandidates = useCallback(() => {
     return new Promise((resolve) => {
-      makeRequest("GET", `/elections/${id}/candidates`, {}, (res) => {
-        if (Array.isArray(res)) setCandidates(res);
+      makeRequest("GET", `/elections/${id}/candidates`, {}, async (res) => {
+        if (Array.isArray(res)) {
+          const candidatesWithVotes = await Promise.all(
+            res.map(async (candidate) => {
+              const votes = await getVotes(id, candidate.id);
+              return { ...candidate, votes: votes }; // Додаємо поле votes
+            })
+          );
+
+          setCandidates(candidatesWithVotes);
+        }
         resolve();
       });
     });
-  }, [id]);
+  }, [getVotes, id]);
 
   const handleDeleteCandidate = async () => {
     if (!candidateToDelete) return;
@@ -73,6 +84,29 @@ export function ElectionDetailsPage() {
         toast.error("Не вдалося видалити кандидата", { description: res.message });
       }
       setCandidateToDelete(null); // Закриваємо діалог
+    });
+  };
+
+  const handleVote = async (candidateId) => {
+    // 1. Спочатку перевіряємо на бекенді, чи можна голосувати (status check)
+    // Це економить газ користувача, якщо він вже голосував
+    makeRequest("GET", `/elections/${id}/vote-status`, {}, async (statusRes) => {
+      if (!statusRes.can_vote) {
+        toast.error(statusRes.message);
+        return;
+      }
+
+      // 2. Голосуємо в блокчейні
+      const txHash = await voteOnChain(id, candidateId);
+
+      if (txHash) {
+        // 3. Якщо успіх - фіксуємо факт на бекенді
+        await makeRequest("POST", `/elections/${id}/vote`, { transaction_hash: txHash }, (logRes) => {
+          if (logRes.status === "error") {
+            toast.warning("Голос в блокчейні є, але бекенд не оновився.");
+          }
+        });
+      }
     });
   };
 
@@ -123,26 +157,37 @@ export function ElectionDetailsPage() {
                     <AvatarFallback>{candidate.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div className="grow">
-                    <h3 className="font-bold text-lg">{candidate.user.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-lg">{candidate.user.name}</h3>
+                      {/* ВІДОБРАЖЕННЯ ГОЛОСІВ */}
+                      <Badge variant="secondary" className="text-xs">
+                        {candidate.votes || 0} голосів
+                      </Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground line-clamp-2">{candidate.bio || "Немає опису"}</p>
                   </div>
                   <div className="flex gap-2">
-                    {/* Кнопка видалення (Тільки для Адміна) */}
-                    {user?.role === "admin" && (
+                    {user?.role === "admin" ? (
+                      // Кнопка видалення (Тільки для Адміна)
                       <Button
                         variant="destructive"
-                        size="icon"
                         onClick={(e) => {
                           e.stopPropagation(); // Щоб не спрацьовував клік по картці, якщо він є
                           setCandidateToDelete(candidate.id);
                         }}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        Видалити <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      // Кнопка голосування (Не для Адміна)
+                      <Button
+                        variant="outline"
+                        disabled={voteLoading} // Блокуємо під час транзакції
+                        onClick={() => handleVote(candidate.id)}
+                      >
+                        {voteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Голосувати"}
                       </Button>
                     )}
-
-                    {/* Кнопка голосування (поки заглушка) */}
-                    <Button variant="outline">Голосувати</Button>
                   </div>
                 </Card>
               ))}
