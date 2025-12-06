@@ -8,6 +8,7 @@ import { ElectionsPage } from "@/pages/ElectionsPage";
 import { ElectionDetailsPage } from "@/pages/ElectionDetailsPage";
 import { MyVotesPage } from "@/pages/MyVotesPage";
 import { AdminStats } from "@/pages/AdminStats";
+import { GovernancePage } from "@/pages/GovernancePage";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("auth_token");
@@ -39,6 +40,8 @@ function App() {
             <Route path="/my-votes" element={<MyVotesPage />} />
 
             <Route path="/admin/stats" element={<AdminStats />} />
+
+            <Route path="/governance" element={<GovernancePage />} />
           </Route>
 
           {/* Маршрут для 404 */}

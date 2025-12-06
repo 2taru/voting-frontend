@@ -29,7 +29,6 @@ export function ElectionsPage() {
   };
 
   useEffect(() => {
-    // Отримуємо збереженого юзера
     const userData = localStorage.getItem("user_data");
     if (userData) setUser(JSON.parse(userData));
 
@@ -40,7 +39,6 @@ export function ElectionsPage() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Активні голосування</h1>
-        {/* Показуємо кнопку тільки адміну */}
         {user?.role === "admin" && (
           <Button onClick={() => setIsCreateOpen(true)}>
             <Plus className="mr-2 h-4 w-4" /> Створити вибори

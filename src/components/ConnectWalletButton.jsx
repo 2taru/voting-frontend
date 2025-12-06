@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Wallet, Loader2, Check } from "lucide-react";
@@ -7,9 +7,49 @@ import { makeRequest } from "@/lib/utils";
 
 export function ConnectWalletButton({ className, onConnected }) {
   const [loading, setLoading] = useState(false);
-  const [address, setAddress] = useState(null);
 
-  // Перевірка наявності MetaMask
+  const [address, setAddress] = useState(() => {
+    const savedUser = localStorage.getItem("user_data");
+    return savedUser ? JSON.parse(savedUser).wallet_address : null;
+  });
+
+  const saveWalletToBackend = useCallback(
+    async (walletAddress) => {
+      await makeRequest("POST", "/user/wallet", { wallet_address: walletAddress }, (res) => {
+        if (res.user) {
+          localStorage.setItem("user_data", JSON.stringify(res.user));
+          if (onConnected) onConnected(res.user);
+        } else {
+          setAddress(null);
+          toast.error(res.message || "Помилка збереження адреси.");
+        }
+      });
+    },
+    [onConnected]
+  );
+
+  useEffect(() => {
+    if (window.ethereum) {
+      const handleAccountsChanged = (accounts) => {
+        if (accounts.length > 0) {
+          const newAddress = accounts[0];
+          setAddress(newAddress);
+          saveWalletToBackend(newAddress);
+          toast.info("Акаунт MetaMask змінено");
+        } else {
+          setAddress(null);
+          toast.warning("MetaMask відключено");
+        }
+      };
+
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+
+      return () => {
+        window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      };
+    }
+  }, [saveWalletToBackend]);
+
   const connectWallet = async () => {
     if (!window.ethereum) {
       toast.error("MetaMask не знайдено! Будь ласка, встановіть розширення.");
@@ -18,12 +58,9 @@ export function ConnectWalletButton({ className, onConnected }) {
 
     setLoading(true);
     try {
-      // Запит до MetaMask на отримання акаунтів
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       const walletAddress = accounts[0];
       setAddress(walletAddress);
-
-      // Зберігаємо адресу на бекенді
       await saveWalletToBackend(walletAddress);
     } catch (error) {
       console.error(error);
@@ -31,19 +68,6 @@ export function ConnectWalletButton({ className, onConnected }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const saveWalletToBackend = async (walletAddress) => {
-    await makeRequest("POST", "/user/wallet", { wallet_address: walletAddress }, (res) => {
-      if (res.user) {
-        toast.success("Гаманець успішно прив'язано!");
-        // Оновлюємо дані юзера в localStorage
-        localStorage.setItem("user_data", JSON.stringify(res.user));
-        if (onConnected) onConnected(res.user);
-      } else {
-        toast.error(res.message || "Помилка збереження адреси.");
-      }
-    });
   };
 
   if (address) {

@@ -34,7 +34,7 @@ export function useVotingContract() {
     }
   };
 
-  // 1. Створення виборів (Адмін)
+  // Створення виборів (Адмін)
   const createElectionOnChain = async (electionId) => {
     setLoading(true);
     try {
@@ -64,7 +64,7 @@ export function useVotingContract() {
     }
   };
 
-  // 2. Активація виборів (Адмін) - можна викликати при зміні статусу на 'active'
+  // Активація виборів (Адмін)
   const toggleElectionStatusOnChain = async (electionId, isActive) => {
     setLoading(true);
     try {
@@ -85,7 +85,7 @@ export function useVotingContract() {
     }
   };
 
-  // 3. Голосування (Користувач)
+  // Голосування (Користувач)
   const voteOnChain = async (electionId, candidateId) => {
     setLoading(true);
     try {
@@ -115,18 +115,13 @@ export function useVotingContract() {
     }
   };
 
-  // 4. Отримання кількості голосів (Public View)
+  // Отримання кількості голосів (Public View)
   const getVotes = useCallback(async (electionId, candidateId) => {
     try {
-      // Тут можна використовувати getSignedContract, але краще просто Provider (швидше, не треба signer)
       if (!window.ethereum) return 0;
       const provider = new ethers.BrowserProvider(window.ethereum);
-
-      // Створюємо інстанс тільки для читання
       const contract = new ethers.Contract(VOTING_CONTRACT_ADDRESS, VotingSystemABI.abi, provider);
-
       const count = await contract.getCandidateVotes(electionId, candidateId);
-      // Повертаємо число (BigInt конвертуємо в Number/String)
       return Number(count);
     } catch (error) {
       console.error("Error fetching votes:", error);
@@ -139,6 +134,6 @@ export function useVotingContract() {
     createElectionOnChain,
     toggleElectionStatusOnChain,
     voteOnChain,
-    getVotes, // <--- Експортуємо нову функцію
+    getVotes,
   };
 }

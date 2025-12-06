@@ -21,10 +21,11 @@ import { ArrowLeft, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { EditElectionDialog } from "@/components/admin/EditElectionDialog";
 import { AddCandidateDialog } from "@/components/admin/AddCandidateDialog";
+import { ElectionResultsChart } from "@/components/ElectionResultsChart";
 
 export function ElectionDetailsPage() {
   const { getVotes, voteOnChain, loading: voteLoading } = useVotingContract();
-  const { id } = useParams(); // Отримуємо ID з URL
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
@@ -49,9 +50,8 @@ export function ElectionDetailsPage() {
         resolve();
       });
     });
-  }, [id, navigate]); // 2. Додаємо залежності
+  }, [id, navigate]);
 
-  // Функція завантаження кандидатів
   const fetchCandidates = useCallback(() => {
     return new Promise((resolve) => {
       makeRequest("GET", `/elections/${id}/candidates`, {}, async (res) => {
@@ -59,7 +59,7 @@ export function ElectionDetailsPage() {
           const candidatesWithVotes = await Promise.all(
             res.map(async (candidate) => {
               const votes = await getVotes(id, candidate.id);
-              return { ...candidate, votes: votes }; // Додаємо поле votes
+              return { ...candidate, votes: votes };
             })
           );
 
@@ -77,30 +77,28 @@ export function ElectionDetailsPage() {
     await makeRequest("DELETE", `/candidates/${candidateToDelete}`, {}, (res) => {
       setDeleteLoading(false);
       if (res.message === "Candidate removed successfully") {
-        // Перевіряємо повідомлення з бекенду
         toast.success("Кандидата видалено");
-        fetchCandidates(); // Оновлюємо список
+        fetchCandidates();
       } else {
         toast.error("Не вдалося видалити кандидата", { description: res.message });
       }
-      setCandidateToDelete(null); // Закриваємо діалог
+      setCandidateToDelete(null);
     });
   };
 
   const handleVote = async (candidateId) => {
-    // 1. Спочатку перевіряємо на бекенді, чи можна голосувати (status check)
-    // Це економить газ користувача, якщо він вже голосував
+    // Спочатку перевіряємо на бекенді, чи можна голосувати (status check)
     makeRequest("GET", `/elections/${id}/vote-status`, {}, async (statusRes) => {
       if (!statusRes.can_vote) {
         toast.error(statusRes.message);
         return;
       }
 
-      // 2. Голосуємо в блокчейні
+      // Голосуємо в блокчейні
       const txHash = await voteOnChain(id, candidateId);
 
       if (txHash) {
-        // 3. Якщо успіх - фіксуємо факт на бекенді
+        // Якщо успіх - фіксуємо факт на бекенді
         await makeRequest("POST", `/elections/${id}/vote`, { transaction_hash: txHash }, (logRes) => {
           if (logRes.status === "error") {
             toast.warning("Голос в блокчейні є, але бекенд не оновився.");
@@ -114,7 +112,6 @@ export function ElectionDetailsPage() {
     setLoading(true);
     const userData = localStorage.getItem("user_data");
     if (userData) setUser(JSON.parse(userData));
-    // Завантажуємо все паралельно
     Promise.all([fetchElectionData(), fetchCandidates()]).finally(() => setLoading(false));
   }, [fetchCandidates, fetchElectionData, id, navigate]);
 
@@ -130,18 +127,15 @@ export function ElectionDetailsPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-5xl">
-      {/* Кнопка назад */}
       <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4 pl-0 hover:bg-transparent hover:underline">
         <ArrowLeft className="mr-2 h-4 w-4" /> Назад до списку
       </Button>
 
-      <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
+      <div className="grid gap-8 md:grid-cols-2">
         {/* Ліва колонка: Список кандидатів */}
-        <div className="space-y-6">
+        <div className="space-y-6 md:col-span-1">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">Кандидати</h2>
-
-            {/* КНОПКА ДОДАВАННЯ КАНДИДАТА (Тільки для Адміна) */}
             {user?.role === "admin" && (
               <Button size="sm" variant="outline" onClick={() => setIsAddCandidateOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" /> Додати кандидата
@@ -159,7 +153,6 @@ export function ElectionDetailsPage() {
                   <div className="grow">
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-lg">{candidate.user.name}</h3>
-                      {/* ВІДОБРАЖЕННЯ ГОЛОСІВ */}
                       <Badge variant="secondary" className="text-xs">
                         {candidate.votes || 0} голосів
                       </Badge>
@@ -168,23 +161,17 @@ export function ElectionDetailsPage() {
                   </div>
                   <div className="flex gap-2">
                     {user?.role === "admin" ? (
-                      // Кнопка видалення (Тільки для Адміна)
                       <Button
                         variant="destructive"
                         onClick={(e) => {
-                          e.stopPropagation(); // Щоб не спрацьовував клік по картці, якщо він є
+                          e.stopPropagation();
                           setCandidateToDelete(candidate.id);
                         }}
                       >
                         Видалити <Trash2 className="h-4 w-4" />
                       </Button>
                     ) : (
-                      // Кнопка голосування (Не для Адміна)
-                      <Button
-                        variant="outline"
-                        disabled={voteLoading} // Блокуємо під час транзакції
-                        onClick={() => handleVote(candidate.id)}
-                      >
+                      <Button variant="outline" disabled={voteLoading} onClick={() => handleVote(candidate.id)}>
                         {voteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Голосувати"}
                       </Button>
                     )}
@@ -198,7 +185,7 @@ export function ElectionDetailsPage() {
         </div>
 
         {/* Права колонка: Інфо про вибори */}
-        <div className="space-y-6">
+        <div className="space-y-6  md:col-span-1">
           <Card>
             <CardHeader>
               <CardTitle>Інформація</CardTitle>
@@ -209,8 +196,6 @@ export function ElectionDetailsPage() {
                   <h1 className="text-xl font-bold mr-2">{election.title}</h1>
                   <Badge variant={election.status === "active" ? "default" : "secondary"}>{election.status.toUpperCase()}</Badge>
                 </div>
-
-                {/* Кнопка редагування для адміна */}
                 {user?.role === "admin" && (
                   <Button variant="outline" size="icon" onClick={() => setIsEditOpen(true)}>
                     <Pencil className="h-4 w-4" />
@@ -230,20 +215,11 @@ export function ElectionDetailsPage() {
               </div>
             </CardContent>
           </Card>
+          <ElectionResultsChart candidates={candidates} />
         </div>
       </div>
-      <EditElectionDialog
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        election={election}
-        onSuccess={fetchElectionData} // Оновлюємо дані після збереження
-      />
-      <AddCandidateDialog
-        open={isAddCandidateOpen}
-        onOpenChange={setIsAddCandidateOpen}
-        electionId={id}
-        onSuccess={fetchCandidates} // Передаємо функцію оновлення списку
-      />
+      <EditElectionDialog open={isEditOpen} onOpenChange={setIsEditOpen} election={election} onSuccess={fetchElectionData} />
+      <AddCandidateDialog open={isAddCandidateOpen} onOpenChange={setIsAddCandidateOpen} electionId={id} onSuccess={fetchCandidates} />
       <AlertDialog open={!!candidateToDelete} onOpenChange={(open) => !open && setCandidateToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

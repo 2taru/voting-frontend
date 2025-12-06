@@ -12,7 +12,10 @@ export function Navigation() {
   const user = JSON.parse(localStorage.getItem("user_data"));
 
   const getNavigationLinks = () => {
-    const commonLinks = [{ href: "/", label: "Головна" }];
+    const commonLinks = [
+      { href: "/", label: "Головна" },
+      { href: "/governance", label: "Управління (DPoS)" },
+    ];
 
     if (user.role === "voter") {
       return [...commonLinks, { href: "/my-votes", label: "Мої голоси" }];
@@ -26,7 +29,6 @@ export function Navigation() {
   const navigationLinks = getNavigationLinks();
 
   const handleLogout = () => {
-    // Тут ваша логіка виходу
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user_role");
     navigate("/login");
@@ -100,7 +102,7 @@ export function Navigation() {
         </div>
         {/* Right side */}
         <div className="flex items-center gap-4">
-          {user.role === "voter" && <ConnectWalletButton className=" align-self-end" onConnected={() => toast.success("Успішно підключено!")} />}
+          <ConnectWalletButton className=" align-self-end" onConnected={() => toast.success("Успішно підключено!")} />
           {/* User menu */}
           <UserMenu user={user} handleLogout={handleLogout} />
         </div>

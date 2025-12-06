@@ -10,11 +10,9 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useVotingContract } from "@/hooks/use-voting-contract";
 
-// Допоміжна функція для форматування дати під input datetime-local
 const formatDateForInput = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
-  // Віднімаємо зміщення часового поясу, щоб отримати локальний час у форматі ISO
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
   return date.toISOString().slice(0, 16);
 };
@@ -30,7 +28,6 @@ export function EditElectionDialog({ open, onOpenChange, onSuccess, election }) 
     status: "planned",
   });
 
-  // Заповнюємо форму даними при відкритті
   useEffect(() => {
     if (election && open) {
       setFormData({
@@ -70,7 +67,7 @@ export function EditElectionDialog({ open, onOpenChange, onSuccess, election }) 
           }
         }
         toast.success("Дані оновлено!");
-        onSuccess(); // Оновлюємо дані на сторінці
+        onSuccess();
         onOpenChange(false);
       } else {
         toast.error("Помилка оновлення", { description: res.message });

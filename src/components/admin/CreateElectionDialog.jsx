@@ -34,27 +34,23 @@ export function CreateElectionDialog({ open, onOpenChange, onSuccess }) {
       if (res.election.id) {
         const electionId = res.election.id;
 
-        // 2. Створюємо в Блокчейні (Solidity)
-        // Увага: Для цього MetaMask адміна має бути Account #0 (Deployer)
+        // Створюємо в Блокчейні (Solidity)
         const success = await createElectionOnChain(electionId);
 
         if (success) {
-          // 3. Якщо все ок - завершуємо
           toast.success("Вибори створено і синхронізовано!");
           onSuccess();
           onOpenChange(false);
           setFormData({ title: "", description: "", start_date: "", end_date: "" });
         } else {
-          // Якщо блокчейн відпав, можна видалити запис з БД або попередити адміна
           toast.warning("Запис створено в БД, але не в Блокчейні. Спробуйте пізніше.");
-          // Все одно закриваємо, щоб не блокувати роботу
           onSuccess();
           onOpenChange(false);
         }
         toast.success("Вибори успішно створено!");
-        onSuccess(); // Оновлюємо список батьківському компоненті
-        onOpenChange(false); // Закриваємо модалку
-        setFormData({ title: "", description: "", start_date: "", end_date: "" }); // Очищаємо форму
+        onSuccess();
+        onOpenChange(false);
+        setFormData({ title: "", description: "", start_date: "", end_date: "" });
       } else {
         toast.error("Помилка створення", { description: res.message });
       }
